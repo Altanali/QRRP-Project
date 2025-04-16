@@ -10,11 +10,9 @@ function [ rho, u2, tau ] = housev(chi1, x2)
     %}
     chi2 = norm (x2);
     alpha = norm ([chi1, chi2]); % |x|_2
-    disp(alpha)
     rho = -sign(chi1)*alpha;
     v1 = chi1 - rho;
     u2 = x2/v1;
     chi2 = chi2/abs(v1); % |u_2|_2
-    disp(chi2)
     tau = (1 + chi2^2)/2;
 end
