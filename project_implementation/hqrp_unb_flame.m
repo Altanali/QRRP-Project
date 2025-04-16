@@ -1,9 +1,16 @@
-function [ A_out, T_out, s ] = hqrp_unb_flame( A , T )
+function [ A_out, T_out, s ] = hqrp_unb_flame( A , T , num_iter )
 
+	if num_iter == -1
+		num_iter = (size(A, 2));
+	end 
+
+	if T == 0
+		T = zeros(size(A, 2));
+	end 
+	
 	[ ~, n ] = size( A );
 	% t = zeros( n,1 );
 	s = 1:n;
-
 	[ ATL, ATR, ...
 	  ABL, ABR ] = FLA_Part_2x2( A, ...
 								 0, 0, 'FLA_TL' );
@@ -14,32 +21,30 @@ function [ A_out, T_out, s ] = hqrp_unb_flame( A , T )
 	% [ tT, ...
 	%   tB ] = FLA_Part_2x1( t, ...
 	% 						0, 'FLA_TOP' );
-	
 	[ sL, sR ] = FLA_Part_1x2( s, ...
 								0, 'FLA_LEFT' );
-	while ( size( ATL, 2 ) < size( A, 2  ) )
+	while ( size( ATL, 2 ) < size( A, 2  ) && num_iter > 0 )
 		% Perform any column pivoting before partitioning
 		[ s0, s1, s2 ] = FLA_Repart_1x2_to_1x3( sL, sR, 1, 'FLA_RIGHT' );
 		pivot_idx = find_pivot(ABR);
-		if pivot_idx ~= 1
-			s1 = s2(pivot_idx - 1);
-			s2(pivot_idx - 1) = s1;
+		s1 = pivot_idx;
+		if pivot_idx ~= 1 % Pivot Index is relative to sL
+			disp(["pivoting", pivot_idx])
+			% s2(pivot_idx - 1) = s1;
 			ABR(:, [1, pivot_idx]) = ABR(:, [pivot_idx, 1]);
 		end
 		[ sL, sR ] = FLA_Cont_with_1x3_to_1x2(s0, s1, s2, 'FLA_LEFT');
-
+		disp(["s1", s1])
 		[ A00,  a01,     A02,  ...
 			a10t, alpha11, a12t, ...
 			A20,  a21,     A22 ] = FLA_Repart_2x2_to_3x3( ATL, ATR, ...
 														ABL, ABR, ...
 														1, 1, 'FLA_BR' );
-
 		[ T00,  ~,   T02,  ...
 		  t10t, ~, t12t, ...
 		  T20,  t21,   T22 ] = FLA_Repart_2x2_to_3x3( TTL, TTR, ...
 														TBL, TBR, ...
 														1, 1, 'FLA_BR' );
-	
 		% [ t0, ...
 		% 	~, ...
 		% 	t2 ] = FLA_Repart_2x1_to_3x1( tT, ...
@@ -53,12 +58,9 @@ function [ A_out, T_out, s ] = hqrp_unb_flame( A , T )
 									a21 );
 
 		% tau1 = tau11;
-
 		w12t = ( a12t + a21' * A22 )/ tau11;
-		
 		a12t = a12t - w12t;
 		A22  = A22 - a21 * w12t;
-
 		t01 = (a10t)' + A20'*a21;
 	
 		%------------------------------------------------------------%
@@ -80,7 +82,7 @@ function [ A_out, T_out, s ] = hqrp_unb_flame( A , T )
 												 t10t, tau11, t12t, ...
 												 T20,  t21, T22, ...
 												'FLA_TL' );
-  
+		%upda
 	end
   
 	A_out = [ ATL, ATR;
