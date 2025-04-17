@@ -25,16 +25,14 @@ function [ A_out, T_out, s ] = hqrp_unb_flame( A , T , num_iter )
 								0, 'FLA_LEFT' );
 	while ( size( ATL, 2 ) < size( A, 2  ) && num_iter > 0 )
 		% Perform any column pivoting before partitioning
-		[ s0, s1, s2 ] = FLA_Repart_1x2_to_1x3( sL, sR, 1, 'FLA_RIGHT' );
+
 		pivot_idx = find_pivot(ABR);
-		s1 = pivot_idx;
 		if pivot_idx ~= 1 % Pivot Index is relative to sL
-			disp(["pivoting", pivot_idx])
-			% s2(pivot_idx - 1) = s1;
+			base = size( ATL, 2 );
+			s([base + 1, pivot_idx + base]) = s([pivot_idx + base, base + 1]);
 			ABR(:, [1, pivot_idx]) = ABR(:, [pivot_idx, 1]);
 		end
-		[ sL, sR ] = FLA_Cont_with_1x3_to_1x2(s0, s1, s2, 'FLA_LEFT');
-		disp(["s1", s1])
+
 		[ A00,  a01,     A02,  ...
 			a10t, alpha11, a12t, ...
 			A20,  a21,     A22 ] = FLA_Repart_2x2_to_3x3( ATL, ATR, ...
@@ -93,6 +91,7 @@ function [ A_out, T_out, s ] = hqrp_unb_flame( A , T , num_iter )
   
 	T_out = [TTL, TTR,; 
 			 TBL, TBR];
+
   return
   
 function [ idx ] = find_pivot(A)
