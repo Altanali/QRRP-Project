@@ -1,0 +1,99 @@
+function [ A, T, s ] = hqrrp_blk( A, T, s, b, p )
+	G = randn(b + p, size(A, 1));
+	Y = G*A;
+
+	[ ATL, ATR, ...
+	  ABL, aBR ]  = FLA_Part_2x2( A, ...
+	  							  0, 0, 'FLA_TL');
+
+	[ TT, ...
+	  TB ] = FLA_Part_2x1(T, 0, 'FLA_TOP');
+
+	[ sT, ...
+	  sB ] = FLA_Part_2x1(s, 0, 'FLA_TOP');
+
+	[ YL, YR ] = FLA_Part_1x2(Y, 0, 'FLA_LEFT');
+	[ GL, GR ] = FLA_Part_1x2(G, 0, 'FLA_LEFT');
+
+	while (size(ATL, 2) < size(A, 2))
+		b = min(b, size(ABR, 2));
+		[ A00,  A01, A02,  ...
+		  A10,  A11, A12, ...
+		  A20,  A21, A22 ] = FLA_Repart_2x2_to_3x3( ATL, ATR, ...
+														ABL, ABR, ...
+														b, b, 'FLA_BR' );
+		[ T0, ... 
+		  T1, ..., 
+		  T2 ] = FLA_Repart_2x1_to_3x1( TT, TB, b, 'FLA_BOTTOM' );
+
+		[ s0, ...
+		  s1, ... 
+		  s2 ] = FLA_Repart_2x1_to_3x1( sT, sb, b, 'FLA_BOTTOM' );
+
+		[ Y0, Y1, Y2 ] = FLA_Repart_1x2_to_1x3( YL, YR, b, 'FLA_RIGHT' );
+		[ G0, G1, G2 ] = FLA_Repart_1x2_to_1x3( GL, GR, b, 'FLA_RIGHT' );
+
+		s1 = DeterminePivots(Y1, Y2, b); %s1 is 1xb
+		%Swap according to pivot selection
+		[ A01, A02 ] = SwapCols(s1, A01, A02);
+		[ A11, A12 ] = SwapCols(s1, A11, A12);
+		[ A21, A22 ] = SwapCols(s1, A21, A22);
+		
+		%Perform HQRP with pivoted columns. 
+		A_11_m = size(A_11, 1);
+		[A_out, T1, s1_prime] = hqrp_unb_flame([A_11; A_21], T1, b);
+		A11 = A_out(1:A_11_m, :);
+		A21 = A_out(A_11_m + 1:end, :);
+ 		[A01, ~] = SwapCols(s1_prime, A01, []);
+		s1 = SwapCols(s1_prime, s1, []);
+
+		%Update the rest of the matrix.
+		U11 = tril(A_11, -1) + eye(size(A_11, 1));
+		U21 = A21;
+		R12 = A12;
+		W12 = inv(T1') * (A11' * A12 + A21' * A22);
+		A12 = A12 - U11 * W12;
+		A22 = A22 - U21 * W12;
+
+		%Update Y and G matrices.
+		[Y1, Y2] = SwapCols(s1, Y1, Y2);	
+		[G1, G2] = SwapCols(s1, G1, G2);
+		Y2 = Y2 - (G1 - (G1 * U11 + G2 * U21) * inv(T1) * U11') * R12;
+
+		%Continue With...
+		[ ATL, ATR, ... 
+		  ABL, ABR ] = FLA_Cont_with_3x3_to_2x2( A00, A01, A02, ...
+												A10, A11, A12, ...
+												A20, A21, A22, ...
+												'FLA_TR' );
+		[ TT, ... 
+		  TB ] = FLA_Cont_with_1x3_to_1x2( T0, T1, T2, 'FLA_TOP' );
+
+		[ sT, ... 
+		  sB ] = FLA_Cont_with_1x3_to_1x2( s0, s1, s2, 'FLA_TOP' );
+
+		[ YL, YR ] = FLA_Cont_with_1x3_to_1x2( Y0, Y1, Y2, 'FLA_LEFT' );
+		[ GL, GR ] = FLA_Cont_with_1x3_to_1x2( G0, G1, G2, 'FLA_LEFT' );
+		
+	end
+
+	A = [ATL, ATR; 
+	     ABL, ABR];
+	T = [TT; TB];
+	s = [sT; sB];
+end
+
+
+function [ s1 ] = DeterminePivots(Y1, Y2, b)
+	[~, ~, s ] = hqrp_unb_flame(cat(2, Y1, Y2), 0, b);
+	s1 = s( 1 : b );
+end
+
+function [ AL, AR ] = SwapCols( s1, AL, AR )
+	% Permutes the columns of A01, A02, A11, A12, A21, A22 according to s1
+	AL_n = size(AL, 2);
+	A_temp = [AL, AR];
+	A_temp = A_temp(:, s1);
+	AL = A_temp(:, 1 : AL_n);
+	AR = A_temp(:, AL_n + 1 : end);
+end

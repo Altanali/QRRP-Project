@@ -31,6 +31,7 @@ function [ A_out, T_out, s ] = hqrp_unb_flame( A , T , num_iter )
 			base = size( ATL, 2 );
 			s([base + 1, pivot_idx + base]) = s([pivot_idx + base, base + 1]);
 			ABR(:, [1, pivot_idx]) = ABR(:, [pivot_idx, 1]);
+			ATR(:, [1, pivot_idx]) = ATR(:, [pivot_idx, 1]);
 		end
 
 		[ A00,  a01,     A02,  ...
@@ -80,7 +81,7 @@ function [ A_out, T_out, s ] = hqrp_unb_flame( A , T , num_iter )
 												 t10t, tau11, t12t, ...
 												 T20,  t21, T22, ...
 												'FLA_TL' );
-		%upda
+		
 	end
   
 	A_out = [ ATL, ATR;
