@@ -14,7 +14,7 @@ function [ A, T, s ] = hqrrp_blk( A, T, s, b, p )
 	[ YL, YR ] = FLA_Part_1x2(Y, 0, 'FLA_LEFT');
 	[ GL, GR ] = FLA_Part_1x2(G, 0, 'FLA_LEFT');
 
-	while (size(ATL, 2) < size(A, 2))
+	while (size(ATL, 2) < size(A, 2) && size(ATL, 1) < size(A, 1))
 		b = min([b, size(ABR, 2)]);
 		[ A00,  A01, A02,  ...
 		  A10,  A11, A12, ...
@@ -25,8 +25,7 @@ function [ A, T, s ] = hqrrp_blk( A, T, s, b, p )
 		  T1, ..., 
 		  T2 ] = FLA_Repart_2x1_to_3x1( TT, TB, b, 'FLA_BOTTOM' );
 		
-		% disp([sT]);
-		% disp([sB]);
+		
 		[ s0, s1, s2 ] = FLA_Repart_1x2_to_1x3( sL, sR, b, 'FLA_RIGHT' );
 		[ Y0, Y1, Y2 ] = FLA_Repart_1x2_to_1x3( YL, YR, b, 'FLA_RIGHT' );
 		[ G0, G1, G2 ] = FLA_Repart_1x2_to_1x3( GL, GR, b, 'FLA_RIGHT' );
@@ -39,10 +38,8 @@ function [ A, T, s ] = hqrrp_blk( A, T, s, b, p )
 		
 		%Perform HQRP with pivoted columns. 
 		A_11_m = size(A11, 1);
-		disp(["T1 here: ", size(T1)]);
 
 		[A_out, T1, s1_prime] = hqrp_unb_flame([A11; A21], T1, b);
-		disp(["T1 here: ", size(T1)]);
 
 		A11 = A_out(1:A_11_m, :);
 		A21 = A_out(A_11_m + 1:end, :);
@@ -58,23 +55,12 @@ function [ A, T, s ] = hqrrp_blk( A, T, s, b, p )
 		A12 = A12 - U11 * W12;
 		A22 = A22 - U21 * W12;
 
-		disp(["u11: ", size(U11)]);
-		disp(["u21: ", size(U21)]);
-		disp(["r12: ", size(R12)]);	
-		disp(["t11: ", size(T11)]);
-		disp(["w12: ", size(W12)]);
-		disp(["a12: ", size(A12)]);
-		disp(["a22: ", size(A22)]);
-		disp(["y1: ", size(Y1)]);
-		disp(["y2: ", size(Y2)]);
-		disp(["g1: ", size(G1)]);
-		disp(["g2: ", size(G2)]);
 		%Update Y and G matrices.
-		disp("------------------");
-
-		[Y1, Y2] = SwapCols(s1, Y1, Y2);	
-		[G1, G2] = SwapCols(s1, G1, G2);
-		Y2 = Y2 - (G1 - ((G1 * U11 + G2 * U21) * inv(T11)) * U11') * R12;
+		if size(Y2, 2) > 0
+			[Y1, Y2] = SwapCols(s1, Y1, Y2);	
+			[G1, G2] = SwapCols(s1, G1, G2);
+			Y2 = Y2 - (G1 - ((G1 * U11 + G2 * U21) * inv(T11)) * U11') * R12;
+		end
 
 		%Continue With...
 		[ ATL, ATR, ... 
@@ -82,9 +68,6 @@ function [ A, T, s ] = hqrrp_blk( A, T, s, b, p )
 												A10, A11, A12, ...
 												A20, A21, A22, ...
 												'FLA_TR' );
-		disp(["T0", size(T0)]);
-		disp(["T1", size(T1)]);
-		disp(["T2", size(T2)])
 
 		[ TT, ... 
 		  TB ] = FLA_Cont_with_3x1_to_2x1( T0, T1, T2, 'FLA_TOP' );
