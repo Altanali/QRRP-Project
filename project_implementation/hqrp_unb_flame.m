@@ -4,9 +4,10 @@ function [ A_out, T_out, s ] = hqrp_unb_flame( A , T , num_iter )
 		num_iter = (size(A, 2));
 	end 
 
-	if T == 0
+	if T == -1
 		T = zeros(size(A, 2));
 	end 
+
 	
 	[ ~, n ] = size( A );
 	% t = zeros( n,1 );
