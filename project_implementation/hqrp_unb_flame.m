@@ -1,17 +1,20 @@
-function [ A_out, T_out, s ] = hqrp_unb_flame( A , T , num_iter )
+function [ A_out, T_out, s ] = hqrp_unb_flame( A , T , s, num_iter )
+	[ ~, n ] = size( A );
 
 	if num_iter == -1
 		num_iter = (size(A, 2));
 	end 
+    
+    if s == -1
+        s = 1:n;
+    end
 
 	if T == -1
 		T = zeros(size(A, 2));
 	end 
 
 	
-	[ ~, n ] = size( A );
 	% t = zeros( n,1 );
-	s = 1:n;
 	[ ATL, ATR, ...
 	  ABL, ABR ] = FLA_Part_2x2( A, ...
 								 0, 0, 'FLA_TL' );
@@ -22,9 +25,10 @@ function [ A_out, T_out, s ] = hqrp_unb_flame( A , T , num_iter )
 	% [ tT, ...
 	%   tB ] = FLA_Part_2x1( t, ...
 	% 						0, 'FLA_TOP' );
-	[ sL, sR ] = FLA_Part_1x2( s, ...
-								0, 'FLA_LEFT' );
-	while ( size( ATL, 2 ) < size( A, 2  ) && num_iter > 0 )
+	%[ sL, sR ] = FLA_Part_1x2( s, ...
+	%							0, 'FLA_LEFT' );
+    
+	while ( size( ATL, 2 ) < size( A, 2  ) && size(ATL, 1) < size( A, 1 ) &&  num_iter > 0 )
 		% Perform any column pivoting before partitioning
 
 		pivot_idx = find_pivot(ABR);
@@ -82,7 +86,8 @@ function [ A_out, T_out, s ] = hqrp_unb_flame( A , T , num_iter )
 												 t10t, tau11, t12t, ...
 												 T20,  t21, T22, ...
 												'FLA_TL' );
-		
+        num_iter = num_iter - 1;
+
 	end
   
 	A_out = [ ATL, ATR;
@@ -93,6 +98,7 @@ function [ A_out, T_out, s ] = hqrp_unb_flame( A , T , num_iter )
   
 	T_out = [TTL, TTR,; 
 			 TBL, TBR];
+
 
   return
   
