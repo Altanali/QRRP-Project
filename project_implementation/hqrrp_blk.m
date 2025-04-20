@@ -1,14 +1,25 @@
 function [ A, T, s ] = hqrrp_blk( A, T, s, b, p )
+	if T == -1
+		T = zeros(size(A, 2));
+	end
+
+	if s == -1
+		s = 1:size(A, 2);
+	end
+
 	G = randn(b + p, size(A, 1));
-    
 	Y = G*A;
 
 	[ ATL, ATR, ...
 	  ABL, ABR ]  = FLA_Part_2x2( A, ...
 	  							  0, 0, 'FLA_TL');
 
-	[ TT, ...
-	  TB ] = FLA_Part_2x1(T, 0, 'FLA_TOP');
+	% [ TT, ...
+	%   TB ] = FLA_Part_2x1(T, 0, 'FLA_TOP');
+	[ TTL, TTR, ... 
+	  TBL, TBR ] = FLA_Part_2x2( T, ... 
+	  							  0, 0, 'FLA_TL' );
+	
 
 	[ sL, sR ] = FLA_Part_1x2(s, 0, 'FLA_LEFT');
 	[ YL, YR ] = FLA_Part_1x2(Y, 0, 'FLA_LEFT');
@@ -21,11 +32,14 @@ function [ A, T, s ] = hqrrp_blk( A, T, s, b, p )
 		  A20,  A21, A22 ] = FLA_Repart_2x2_to_3x3( ATL, ATR, ...
 														ABL, ABR, ...
 														b, b, 'FLA_BR' );
-		[ T0, ... 
-		  T1, ..., 
-		  T2 ] = FLA_Repart_2x1_to_3x1( TT, TB, b, 'FLA_BOTTOM' );
-		
-		
+		% [ T0, ... 
+		%   T1, ..., 
+		%   T2 ] = FLA_Repart_2x1_to_3x1( TT, TB, b, 'FLA_BOTTOM' );
+		[ T00,  T01, T02,  ...
+		  T10,  T11, T12, ...
+		  T20,  T21, T22 ] = FLA_Repart_2x2_to_3x3( TTL, TTR, ... 
+														TBL, TBR, ... 
+														b, b, 'FLA_BR' );
 		[ s0, s1, s2 ] = FLA_Repart_1x2_to_1x3( sL, sR, b, 'FLA_RIGHT' );
 		[ Y0, Y1, Y2 ] = FLA_Repart_1x2_to_1x3( YL, YR, b, 'FLA_RIGHT' );
 		[ G0, G1, G2 ] = FLA_Repart_1x2_to_1x3( GL, GR, b, 'FLA_RIGHT' );
@@ -39,9 +53,9 @@ function [ A, T, s ] = hqrrp_blk( A, T, s, b, p )
 		[ A21, A22 ] = SwapCols(s_pivots, A21, A22);
         [ Y1, Y2 ] = SwapCols(s_pivots, Y1, Y2);
 		[s1, s2] = SwapCols(s_pivots, s1, s2);
-		%Perform HQRP with pivoted columns. 
 
-		[A_out, T1, s1_prime] = hqrp_unb_flame([A11; A21], T1, -1, -1);
+		%Perform HQRP with pivoted columns. 
+		[A_out, T11, s1_prime] = hqrp_unb_flame([A11; A21], T11, -1, -1);
         
 		A11 = A_out(1:b, :);
 		A21 = A_out(b + 1:end, :);
@@ -56,26 +70,14 @@ function [ A, T, s ] = hqrrp_blk( A, T, s, b, p )
 		U11 = tril(A11, -1) + eye(size(A11, 1));
 		U21 = A21;
 		R12 = A12;
-		T11 = triu(T1(:, 1:b));
-        disp(["U11'", size(U11')])
-        disp(["A12", size(A12)])
-        disp(["U21'", size(U21')])
-        disp(["A22", size(A22)])
-		W12 = inv(T11') * (U11' * A12 + U21' * A22);
+		T11_T = triu(T11(:, 1:b));
+		W12 = inv(T11_T') * (U11' * A12 + U21' * A22);
 		A12 = A12 - U11 * W12;
 		A22 = A22 - U21 * W12;
 
 		%Update Y and G matrices.
 		if size(Y2, 2) > 0
-           % temp = G1 * U11;
-           % temp = temp + G2 * U21;
-           % temp = temp * inv(T11);
-           % temp = temp * U11';
-           % temp = temp * R12;
-           % temp = G1 - temp;
-           % Y2 = Y2 - temp;
-            
-			Y2 = Y2 - (G1 - ((G1 * U11 + G2 * U21) * inv(T11)) * U11') * R12;
+			Y2 = Y2 - (G1 - ((G1 * U11 + G2 * U21) * inv(T11_T)) * U11') * R12;
 		end
 
 		%Continue With...
@@ -85,8 +87,13 @@ function [ A, T, s ] = hqrrp_blk( A, T, s, b, p )
 												A20, A21, A22, ...
 												'FLA_TL' );
 
-		[ TT, ... 
-		  TB ] = FLA_Cont_with_3x1_to_2x1( T0, T1, T2, 'FLA_TOP' );
+		% [ TT, ... 
+		%   TB ] = FLA_Cont_with_3x1_to_2x1( T0, T1, T2, 'FLA_TOP' );
+		[ TTL, TTR, ... 
+		  TBL, TBR ] = FLA_Cont_with_3x3_to_2x2( T00, T01, T02, ...
+												T10, T11, T12, ...
+												T20, T21, T22, ...
+												'FLA_TL' );
 		[ sL, sR ] = FLA_Cont_with_1x3_to_1x2( s0, s1, s2, 'FLA_LEFT' );
 		[ YL, YR ] = FLA_Cont_with_1x3_to_1x2( Y0, Y1, Y2, 'FLA_LEFT' );
 		[ GL, GR ] = FLA_Cont_with_1x3_to_1x2( G0, G1, G2, 'FLA_LEFT' );
@@ -95,7 +102,9 @@ function [ A, T, s ] = hqrrp_blk( A, T, s, b, p )
 
 	A = [ATL, ATR; 
 	     ABL, ABR];
-	T = [TT; TB];
+	% T = [TT; TB];
+	T = [TTL, TTR; 
+	     TBL, TBR];
 	s = [sL, sR];
 end
 
