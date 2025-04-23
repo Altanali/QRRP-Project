@@ -2,17 +2,46 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "FLAME.h"
+#include "FLA_HQRRP_UT_blk_var2.h"
 
 #define PRINT_DATA
 
-
-// ============================================================================
-// Declaration of local prototypes.
+enum Dtype { FLOAT, INT };
 
 static void matrix_generate( FLA_Obj A );
 
 static void init_pvt( FLA_Obj p );
 
+static void write_matrix_to_file( FLA_Obj A, char *filename, enum Dtype dtype ) {
+  FILE *fp;
+  int   m_A, n_A, ldim_A;
+  void * buff_A;
+  int   i, j;
+  
+  buff_A = ( void * ) FLA_Obj_buffer_at_view( A );
+  m_A    = FLA_Obj_length( A );
+  n_A    = FLA_Obj_width ( A );
+  ldim_A = FLA_Obj_col_stride( A );
+
+  fp = fopen( filename, "w" );
+  if ( fp == NULL ) {
+    printf( "Error opening file!\n" );
+    return;
+  }
+
+  for ( j = 0; j < n_A; j++ ) {
+    for ( i = 0; i < m_A; i++ ) {
+      if ( dtype == INT ) {
+        fprintf( fp, "%d ", ((int *)buff_A)[ i + j * ldim_A ] );
+      } else if ( dtype == FLOAT ) {
+        fprintf( fp, "%f ", ((double *)buff_A)[ i + j * ldim_A ] );
+      }
+    }
+    fprintf( fp, "\n" );
+  }
+
+  fclose( fp );
+}
 
 // ============================================================================
 int main( int argc, char *argv[] ) {
@@ -23,8 +52,8 @@ int main( int argc, char *argv[] ) {
   FLA_Init();
 
   // Some initializations.
-  m_A = 5;
-  n_A = 5;
+  m_A = 40;
+  n_A = 40;
 
   // Create FLAME objects, and attach buffers.
   FLA_Obj_create( FLA_DOUBLE, m_A, n_A, 0, 0, & A );
@@ -35,14 +64,16 @@ int main( int argc, char *argv[] ) {
   //// FLA_Random_matrix( A );
   matrix_generate( A );
 
+  write_matrix_to_file(A, "../../project_implementation/A.dat", FLOAT);
+
   // Initialize vector with pivots.
   init_pvt( p );
 
   // Print initial data.
 #ifdef PRINT_DATA
-  FLA_Obj_show( " Ai = [ ", A, "%le", " ];" );
-  FLA_Obj_show( " pi = [ ", p, "%d", " ];" );
-  FLA_Obj_show( " taui = [ ", tau, "%le", " ];" );
+//  FLA_Obj_show( " Ai = [ ", A, "%le", " ];" );
+//  FLA_Obj_show( " pi = [ ", p, "%d", " ];" );
+//  FLA_Obj_show( " taui = [ ", tau, "%le", " ];" );
 #endif
 
   // Factorize matrix.
@@ -53,9 +84,12 @@ int main( int argc, char *argv[] ) {
 
   // Print results.
 #ifdef PRINT_DATA
-  FLA_Obj_show( " Af = [ ", A, "%le", " ];" );
-  FLA_Obj_show( " pf = [ ", p, "%d", " ];" );
-  FLA_Obj_show( " tauf = [ ", tau, "%le", " ];" );
+//  FLA_Obj_show( " Af = [ ", A, "%le", " ];" );
+write_matrix_to_file(A, "../../project_implementation/A_out.dat", FLOAT);
+FLA_Obj_show( " pf = [ ", p, "%d", " ];" );
+write_matrix_to_file(p, "../../project_implementation/p_out.dat", INT);
+FLA_Obj_show( " tauf = [ ", tau, "%le", " ];" );
+write_matrix_to_file(tau, "../../project_implementation/tau_out.dat", FLOAT);
 #endif
 
   // Free objects.

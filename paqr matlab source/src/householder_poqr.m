@@ -13,7 +13,7 @@
 %dd = zeros(n,1);
 %
         k = 1;
-        for i = 1:min(m,n),
+        for i = 1:min(m,n)
 %
             %   construct V(1:m,k), R(k,k), T(k,k) based on A(k:m,i)
             [ V(k:m,k), R(k,k), T(k,k) ] = orth_qr2( A(k:m,i) );

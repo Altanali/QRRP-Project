@@ -43,7 +43,7 @@ function [ A, T, s ] = hqrrp_blk( A, T, s, b, p )
 		[ s0, s1, s2 ] = FLA_Repart_1x2_to_1x3( sL, sR, b, 'FLA_RIGHT' );
 		[ Y0, Y1, Y2 ] = FLA_Repart_1x2_to_1x3( YL, YR, b, 'FLA_RIGHT' );
 		[ G0, G1, G2 ] = FLA_Repart_1x2_to_1x3( GL, GR, b, 'FLA_RIGHT' );
-        [~, ~, s_pivots] = hqrp_unb_flame(YR, -1, -1, b);
+        [~, ~, s_pivots] = hqrp_unb_flame(YR, -1, -1, b, 1);
 
 
 
@@ -55,7 +55,7 @@ function [ A, T, s ] = hqrrp_blk( A, T, s, b, p )
 		[s1, s2] = SwapCols(s_pivots, s1, s2);
 
 		%Perform HQRP with pivoted columns. 
-		[A_out, T11, s1_prime] = hqrp_unb_flame([A11; A21], T11, -1, -1);
+		[A_out, T11, s1_prime] = hqrp_unb_flame([A11; A21], T11, -1, -1, 1);
         
 		A11 = A_out(1:b, :);
 		A21 = A_out(b + 1:end, :);
@@ -71,13 +71,13 @@ function [ A, T, s ] = hqrrp_blk( A, T, s, b, p )
 		U21 = A21;
 		R12 = A12;
 		T11_T = triu(T11(:, 1:b));
-		W12 = inv(T11_T') * (U11' * A12 + U21' * A22);
+		W12 = (T11_T') \ (U11' * A12 + U21' * A22);
 		A12 = A12 - U11 * W12;
 		A22 = A22 - U21 * W12;
 
 		%Update Y and G matrices.
 		if size(Y2, 2) > 0
-			Y2 = Y2 - (G1 - ((G1 * U11 + G2 * U21) * inv(T11_T)) * U11') * R12;
+			Y2 = Y2 - (G1 - ((G1 * U11 + G2 * U21) / (T11_T)) * U11') * R12;
 		end
 
 		%Continue With...

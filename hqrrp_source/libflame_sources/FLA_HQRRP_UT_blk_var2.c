@@ -119,7 +119,6 @@ static FLA_Error NoFLA_QRP_downdate_partial_norms( int m_A, int n_A,
 
 static int NoFLA_my_idamax( int n, double * buff_data );
 
-
 // ============================================================================
 int FLA_HQRRP_UT_blk_var2( FLA_Obj A, FLA_Obj p, FLA_Obj s, 
         int nb_alg, int pp, int panel_pivoting ) {
@@ -191,10 +190,10 @@ int FLA_HQRRP_UT_blk_var2( FLA_Obj A, FLA_Obj p, FLA_Obj s,
 #endif
 
   // Create and initialize auxiliary objects.
-  FLA_Obj_create( dtype_A, nb_alg + pp, m_A,    0, 0, & G );
+  FLA_Obj_create( dtype_A, nb_alg + pp, m_A,    0, 0, & G ); 
   FLA_Obj_create( dtype_A, nb_alg + pp, n_A,    0, 0, & Y );
   FLA_Obj_create( dtype_A, nb_alg + pp, n_A,    0, 0, & V );
-  FLA_Obj_create( dtype_A, nb_alg,      n_A,    0, 0, & W );
+  FLA_Obj_create( dtype_A, nb_alg,      n_A,    0, 0, & W ); //bxn
 
   // Initialize matrices G and Y.
   MyFLA_Normal_random_matrix( G );
@@ -292,6 +291,18 @@ int FLA_HQRRP_UT_blk_var2( FLA_Obj A, FLA_Obj p, FLA_Obj s,
       FLA_Merge_2x1( ATR,
                      ABR,   & AR );
       FLA_Copy( YR, VR );
+      /*
+         Pivoting: 1 (True)
+         num_stages: bRow
+         A: VR (sampled matrix)
+         p: pivot vector block, pB
+         t: Householder factor block, sB
+         pivot_B: 1 (True), AR (Right block of A)
+         pivot_C: 1 (True), YR (Right block of Y)
+         build_T: False
+
+         Use QRP of YR to FIND PIVOTS. 
+      */
       MyFLA_QRPmod_UT_unb_var2( 1, bRow, VR, pB, sB, 1, AR, 1, YR, 0, None );
 
 #ifdef PROFILE
@@ -301,7 +312,8 @@ int FLA_HQRRP_UT_blk_var2( FLA_Obj A, FLA_Obj p, FLA_Obj s,
     }
 
     //
-    // Compute QRP of panel AB1 = [ A11; A21 ].
+    // Compute QRP of panel AB1 = [ A11; 
+    //                              A21 ].
     // Apply same permutations to A01 and Y1, and build T1_T.
     //
 #ifdef PROFILE
@@ -312,6 +324,16 @@ int FLA_HQRRP_UT_blk_var2( FLA_Obj A, FLA_Obj p, FLA_Obj s,
                         & None,    bRow, FLA_TOP );
     FLA_Merge_2x1( A11,
                    A21,   & AB1 );
+    /*
+        Pivoting: 1 (True)
+        num_stages: bRow
+        A: AB1 (panel)
+        p: pivot vector block, p1
+        t: Householder factor block, s1
+        pivot_B: 1 (True), A01 (Top part of current block of A)
+        pivot_C: 1 (true), Y1 (Left block of Y)
+        build_T: 1 (True)
+    */
     MyFLA_QRPmod_UT_unb_var2( panel_pivoting, -1, AB1, p1, s1, 
         1, A01, 1, Y1, 1, T1_T );
 
@@ -535,21 +557,24 @@ static FLA_Error MyFLA_Apply_Q_UT_lhfc_blk_var2( FLA_Obj U11, FLA_Obj U21,
   // Create auxiliary object.
   FLA_Obj_create_conf_to( FLA_NO_TRANSPOSE, B1, & W );
 
-  // W = B1;
+  // W = B1 = A12;
 
   FLA_Copyt( FLA_NO_TRANSPOSE, B1, W );
 
   // U11 = trilu( U11 );
-  // U21 = U21;
+  // U21 = U21; (A21 is passed in)
   // W = triu( T )' * ( U11' * B1 + U21' * B2 );
 
+  // W = U11'*A12 = trilu(U11)'*A12
   FLA_Trmm( FLA_LEFT, FLA_LOWER_TRIANGULAR,
             FLA_CONJ_TRANSPOSE, FLA_UNIT_DIAG,
             FLA_ONE, U11, W );
 
+  // W = U11'*A12 + U21'*A22
   FLA_Gemm( FLA_CONJ_TRANSPOSE, FLA_NO_TRANSPOSE, 
             FLA_ONE, U21, B2, FLA_ONE, W );
 
+  // W = triu((T1_T)')^(-1) * (U11'*A12 + U21'*A22) 
   FLA_Trsm( FLA_LEFT, FLA_UPPER_TRIANGULAR,
             FLA_CONJ_TRANSPOSE, FLA_NONUNIT_DIAG,
             FLA_ONE, T, W );
@@ -560,10 +585,12 @@ static FLA_Error MyFLA_Apply_Q_UT_lhfc_blk_var2( FLA_Obj U11, FLA_Obj U21,
   FLA_Gemm( FLA_NO_TRANSPOSE, FLA_NO_TRANSPOSE,
             FLA_MINUS_ONE, U21, W, FLA_ONE, B2 );
 
+
   FLA_Trmm( FLA_LEFT, FLA_LOWER_TRIANGULAR,
             FLA_NO_TRANSPOSE, FLA_UNIT_DIAG,
             FLA_MINUS_ONE, U11, W );
 
+  //B1 = 
   FLA_Axpyt( FLA_NO_TRANSPOSE, FLA_ONE, W, B1 );
 
   // Remove auxiliary object.

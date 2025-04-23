@@ -1,4 +1,4 @@
-function [ A_out, T_out, s ] = hqrp_unb_flame( A , T , s, num_iter )
+function [ A_out, T_out, s ] = hqrp_unb_flame( A , T , s, num_iter, pivot_true)
 	[ ~, n ] = size( A );
 
 	if num_iter == -1
@@ -25,14 +25,15 @@ function [ A_out, T_out, s ] = hqrp_unb_flame( A , T , s, num_iter )
     
 	while ( size( ATL, 2 ) < size( A, 2  ) && size(ATL, 1) < size( A, 1 ) &&  num_iter > 0 )
 		% Perform any column pivoting before partitioning
-
-		pivot_idx = find_pivot(ABR);
-		if pivot_idx ~= 1 % Pivot Index is relative to sL
-			base = size( ATL, 2 );
-			s([base + 1, pivot_idx + base]) = s([pivot_idx + base, base + 1]);
-			ABR(:, [1, pivot_idx]) = ABR(:, [pivot_idx, 1]);
-			ATR(:, [1, pivot_idx]) = ATR(:, [pivot_idx, 1]);
-		end
+        if pivot_true == 1
+		    pivot_idx = find_pivot(ABR);
+            if pivot_idx ~= 1 % Pivot Index is relative to sL
+			    base = size( ATL, 2 );
+			    s([base + 1, pivot_idx + base]) = s([pivot_idx + base, base + 1]);
+			    ABR(:, [1, pivot_idx]) = ABR(:, [pivot_idx, 1]);
+			    ATR(:, [1, pivot_idx]) = ATR(:, [pivot_idx, 1]);
+            end
+        end
 
 		[ A00,  a01,     A02,  ...
 			a10t, alpha11, a12t, ...
@@ -51,7 +52,7 @@ function [ A_out, T_out, s ] = hqrp_unb_flame( A , T , s, num_iter )
 			a21, tau11 ] = housev( alpha11, ...
 									a21 );
 
-		w12t = ( a12t + a21' * A22 )/ tau11;
+        w12t = ( a12t + a21' * A22 )/ tau11;
 		a12t = a12t - w12t;
 		A22  = A22 - a21 * w12t;
 		t01 = (a10t)' + A20'*a21;
