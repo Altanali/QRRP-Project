@@ -6,8 +6,11 @@ clear;
 m = 100;  % Number of rows
 n = 50;  % Number of columns
 
-% Generate random matrix A
-A = randn(m, n);
+% Generate random matrices and vectors
+A = randn(m, 20) * randn(20, n); % Random matrix A
+x_hat = randn(n, 1);
+b = A * x_hat;
+
 
 % Choose orthogonalization routine
 orth_qr2 = @orth_geqr2;  % or use orth_golub, orth_lapack, etc.
@@ -20,17 +23,24 @@ nrm = @(A) norm(A, 2);
 nrmA = nrm(A);
 
 % Run POQR
-[V, R, T, dead_cols] = householder_poqr(A, orth_qr2, is_deficient, nrm, nrmA);
+[V1, R1, T1, dead_cols] = householder_poqr(A, orth_qr2, is_deficient, nrm, nrmA);
 
-% Reconstruct Q from V and T
-Q = eye(m) - V * T * V';
-Q = Q(:, ~dead_cols);
+Q1 = eye(m) - V1 * T1 * V1';
+Q1 = Q1(:, ~dead_cols);
+r = size(R1, 2);
+
+R1 = R1(1:r, :);
 
 
-A_hat = Q * R;
+[V2, R2, T2] = householder_qr(R1, orth_qr2);
+Q2 = eye(r) - V2 * T2 * V2';
+
+Q = Q1 * Q2;
+x_partial = R2 \ (Q' * b);
+
+x = zeros(n, 1);
+x(~dead_cols) = x_partial;
 
 
-% Compute error
-error = norm(A_hat - A, 'fro') / norm(A, 'fro');
-
-fprintf('Reconstruction error (Frobenius norm): %e\n', error);
+error = norm(A' * (A*x - b), 2) / (norm(A, 2)^2);
+disp(error);
